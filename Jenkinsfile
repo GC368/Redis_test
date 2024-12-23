@@ -4,11 +4,11 @@
 pipeline {
     agent any
 
-    // environment {
-    //     WORKING_DIR = "Redis"
-    //     AWS_CREDENTIALS = credentials('aws-test-key')
-    //     ENV = "uat"
-    // }
+    environment {
+        WORKING_DIR = "Default"
+    //    AWS_CREDENTIALS = credentials('aws-test-key')
+        ENV = "uat"
+    }
 
     parameters {
         booleanParam(name: 'destroy', defaultValue: false, description: 'Destroy Terraform build?')
@@ -27,13 +27,12 @@ pipeline {
             steps {
                 dir(WORKING_DIR) {
                     // withVault(configuration: [timeout: 60, vaultCredentialId: 'Vault Credential', vaultUrl: 'https://vault.jiangren.com.au'], vaultSecrets: [[path: 'secret_aws/aws_uat', secretValues: [[vaultKey: 'AWS_ACCESS_KEY_ID'], [vaultKey: 'AWS_SECRET_ACCESS_KEY']]]]) {    
-                    withCredentials([sshUserPrivateKey(credentialsId: SSH_CREDENTIALS, keyFileVariable: 'SSH_KEY')]) {                    
+                    //withCredentials([sshUserPrivateKey(credentialsId: SSH_CREDENTIALS, keyFileVariable: 'SSH_KEY')]) {                    
                         sh '''
-                        cd $ENV
                         terraform init
                         terraform plan -out=tfplan
                         '''
-                    }
+                    //}
                 }
             }
         }
@@ -46,14 +45,14 @@ pipeline {
             }
             steps {
                 dir(WORKING_DIR) {
-                    withVault(configuration: [timeout: 60, vaultCredentialId: 'Vault Credential', vaultUrl: 'https://vault.jiangren.com.au'], vaultSecrets: [[path: 'secret_aws/aws_uat', secretValues: [[vaultKey: 'AWS_ACCESS_KEY_ID'], [vaultKey: 'AWS_SECRET_ACCESS_KEY']]]]) {                        
+                    //withVault(configuration: [timeout: 60, vaultCredentialId: 'Vault Credential', vaultUrl: 'https://vault.jiangren.com.au'], vaultSecrets: [[path: 'secret_aws/aws_uat', secretValues: [[vaultKey: 'AWS_ACCESS_KEY_ID'], [vaultKey: 'AWS_SECRET_ACCESS_KEY']]]]) {                        
                         // Ask for user approval before applying
-                        script {
-                            def userInput = input(
-                                id: 'UserApproval',
-                                message: 'Do you want to proceed with the Terraform apply?',
-                                parameters: [[$class: 'BooleanParameterDefinition', name: 'Proceed', defaultValue: true]]
-                            )
+                        // script {
+                        //     def userInput = input(
+                        //         id: 'UserApproval',
+                        //         message: 'Do you want to proceed with the Terraform apply?',
+                        //         parameters: [[$class: 'BooleanParameterDefinition', name: 'Proceed', defaultValue: true]]
+                        //     )
 
                             // Proceed with terraform apply if approved
                             if (userInput) {

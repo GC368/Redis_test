@@ -1,40 +1,53 @@
+/****************************************************************************
+// Declarative Jenkinsfile for the sigma
+******************************************************************************/
 pipeline {
-    agent any
-    // environment {
-    //     TF_WORKSPACE = 'default'  // Terraform workspace to use
-    // }
-    stages {
-        stage('Terraform Init') {
-            steps {
-                withCredentials([string(credentialsId: 'aws-test-key', variable: 'AWS_ACCESS_KEY_ID'),
-                                 string(credentialsId: 'aws-test-key', variable: 'AWS_SECRET_ACCESS_KEY')]) {
-                    sh 'terraform init'  // Initialize Terraform
-                }                
-            }
-        }
-        stage('Terraform Plan') {
-            steps {
-                withCredentials([string(credentialsId: 'aws-test-key', variable: 'AWS_ACCESS_KEY_ID'),
-                                 string(credentialsId: 'aws-test-key', variable: 'AWS_SECRET_ACCESS_KEY')]) {
-                    sh '''
-                    terraform plan \
-                      -var "aws_access_key=${AWS_ACCESS_KEY_ID}" \
-                      -var "aws_secret_key=${AWS_SECRET_ACCESS_KEY}" \
-                      -out=tfplan
-                    '''
-                }
-            }
-        }
-        stage('Terraform Apply') {
-            steps {
-                input message: 'Approve the Terraform changes?', ok: 'Apply Changes'
-                sh 'terraform apply tfplan'  // Apply the execution plan
-            }
-        }
-    }
+	agent any
+
+	options {
+		// Keep maximum 10 archievd artifacts
+		buildDiscarder(logRotator(numToKeepStr:'10', artifactNumToKeepStr:'10'))
+		// No simultaneous builds
+		disableConcurrentBuilds()
+		durabilityHint('MAX_SURVIVABILITY') // PERFORMANCE_OPTIMIZED or SURVIVABLE_NONATOMIC
+	}
+
+	stages {
+
+		stage('Terraform Init') {
+			steps {
+					sh "pwd"
+					sh "terraform init"
+			}
+		}
+
+		stage('Terraform Plan') {	
+			steps {
+					sh "terraform plan"
+			}
+		}
+
+		stage('Terraform Apply') {
+			steps {
+					sh "pwd"
+					sh "terraform apply --auto-approve"
+			}
+		}
+
+	}
+
     post {
         always {
-            cleanWs()  // Clean workspace after the build
+            // clean workspace
+            cleanWs()
         }
-    }
+        success {
+            bitbucketStatusNotify(buildState: 'SUCCESSFUL')
+            echo 'Success.'
+        }
+        failure {
+            bitbucketStatusNotify(buildState: 'FAILED')
+            echo 'Failure.'
+        }
+    }  
 }
