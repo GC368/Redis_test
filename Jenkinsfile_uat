@@ -1,8 +1,8 @@
 pipeline {
     agent any
-    environment {
-        TF_WORKSPACE = 'default'  // Terraform workspace to use
-    }
+    // environment {
+    //     TF_WORKSPACE = 'default'  // Terraform workspace to use
+    // }
     stages {
         stage('Terraform Init') {
             steps {
