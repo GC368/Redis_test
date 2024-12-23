@@ -6,7 +6,10 @@ pipeline {
     stages {
         stage('Terraform Init') {
             steps {
-                sh 'terraform init'  // Initialize Terraform
+                withCredentials([string(credentialsId: 'aws-test-key', variable: 'AWS_ACCESS_KEY_ID'),
+                                 string(credentialsId: 'aws-test-key', variable: 'AWS_SECRET_ACCESS_KEY')]) {
+                    sh 'terraform init'  // Initialize Terraform
+                }                
             }
         }
         stage('Terraform Plan') {
