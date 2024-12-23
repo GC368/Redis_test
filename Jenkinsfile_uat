@@ -16,7 +16,8 @@ pipeline {
 
 		stage('Terraform Init') {
 			steps {
-					sh "pwd"
+					sh '/bin/zsh -c "./script.sh.copy"'
+                    sh "pwd"
 					sh "terraform init"
 			}
 		}
