@@ -1,0 +1,37 @@
+pipeline {
+    agent any
+    environment {
+        TF_WORKSPACE = 'default'  // Terraform workspace to use
+    }
+    stages {
+        stage('Terraform Init') {
+            steps {
+                sh 'terraform init'  // Initialize Terraform
+            }
+        }
+        stage('Terraform Plan') {
+            steps {
+                withCredentials([string(credentialsId: 'aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'),
+                                 string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')]) {
+                    sh '''
+                    terraform plan \
+                      -var "aws_access_key=${AWS_ACCESS_KEY_ID}" \
+                      -var "aws_secret_key=${AWS_SECRET_ACCESS_KEY}" \
+                      -out=tfplan
+                    '''
+                }
+            }
+        }
+        stage('Terraform Apply') {
+            steps {
+                input message: 'Approve the Terraform changes?', ok: 'Apply Changes'
+                sh 'terraform apply tfplan'  // Apply the execution plan
+            }
+        }
+    }
+    post {
+        always {
+            cleanWs()  // Clean workspace after the build
+        }
+    }
+}
