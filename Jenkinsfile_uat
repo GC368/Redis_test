@@ -37,18 +37,18 @@ pipeline {
 
 	}
 
-    post {
-        always {
-            // clean workspace
-            cleanWs()
-        }
-        success {
-            bitbucketStatusNotify(buildState: 'SUCCESSFUL')
-            echo 'Success.'
-        }
-        failure {
-            bitbucketStatusNotify(buildState: 'FAILED')
-            echo 'Failure.'
-        }
-    }  
+    // post {
+    //     always {
+    //         // clean workspace
+    //         cleanWs()
+    //     }
+    //     success {
+    //         bitbucketStatusNotify(buildState: 'SUCCESSFUL')
+    //         echo 'Success.'
+    //     }
+    //     failure {
+    //         bitbucketStatusNotify(buildState: 'FAILED')
+    //         echo 'Failure.'
+    //     }
+    // }  
 }
