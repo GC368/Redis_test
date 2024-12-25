@@ -1,54 +1,54 @@
-/****************************************************************************
-// Declarative Jenkinsfile for the sigma
-******************************************************************************/
 pipeline {
-	agent any
+    agent any
 
-	options {
-		// Keep maximum 10 archievd artifacts
-		buildDiscarder(logRotator(numToKeepStr:'10', artifactNumToKeepStr:'10'))
-		// No simultaneous builds
-		disableConcurrentBuilds()
-		durabilityHint('MAX_SURVIVABILITY') // PERFORMANCE_OPTIMIZED or SURVIVABLE_NONATOMIC
-	}
+    environment {
+        // Path to your Terraform binary, if not globally available
+        TERRAFORM_VERSION = '1.6.0'
+    }
 
-	stages {
+    stages {
+        stage('Setup Terraform') {
+            steps {
+                // Install or verify Terraform
+                sh '''
+                if ! terraform version | grep $TERRAFORM_VERSION; then
+                    echo "Terraform version $TERRAFORM_VERSION is not installed."
+                    exit 1
+                fi
+                '''
+            }
+        }
 
-		stage('Terraform Init') {
-			steps {
-					sh '/bin/zsh -c "./script.sh.copy"'
-                    sh "pwd"
-					sh "terraform init"
-			}
-		}
+        stage('Terraform Init') {
+            steps {
+                // Initialize Terraform
+                sh 'terraform init'
+            }
+        }
 
-		stage('Terraform Plan') {	
-			steps {
-					sh "terraform plan"
-			}
-		}
+        stage('Terraform Plan') {
+            steps {
+                // Generate and show the execution plan
+                sh 'terraform plan -out=tfplan'
+            }
+        }
 
-		stage('Terraform Apply') {
-			steps {
-					sh "pwd"
-					sh "terraform apply --auto-approve"
-			}
-		}
+        stage('Terraform Apply') {
+            steps {
+                // Apply the changes (requires approval)
+                sh 'terraform apply -auto-approve tfplan'
+            }
+        }
+    }
 
-	}
-
-    // post {
-    //     always {
-    //         // clean workspace
-    //         cleanWs()
-    //     }
-    //     success {
-    //         bitbucketStatusNotify(buildState: 'SUCCESSFUL')
-    //         echo 'Success.'
-    //     }
-    //     failure {
-    //         bitbucketStatusNotify(buildState: 'FAILED')
-    //         echo 'Failure.'
-    //     }
-    // }  
+    post {
+        always {
+            // Clean up workspace or perform any post-run tasks
+            cleanWs()
+        }
+        failure {
+            // Notify in case of failure
+            echo 'Pipeline failed. Please check the logs.'
+        }
+    }
 }
