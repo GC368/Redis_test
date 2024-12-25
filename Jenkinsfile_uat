@@ -2,18 +2,39 @@ pipeline {
     agent any
 
     environment {
-        // Path to your Terraform binary, if not globally available
-        TERRAFORM_VERSION = '1.6.0'
+        TERRAFORM_VERSION = '1.6.0' // Specify the desired Terraform version
+        TERRAFORM_BIN = '/usr/local/bin/terraform'
     }
 
     stages {
-        stage('Setup Terraform') {
+        stage('Checkout Code') {
             steps {
-                // Install or verify Terraform
+                // Pull the code from your version control system
+                checkout scm
+            }
+        }
+
+        stage('Install Terraform') {
+            steps {
+                // Install Terraform on Amazon Linux 2023
                 sh '''
-                if ! terraform version | grep $TERRAFORM_VERSION; then
-                    echo "Terraform version $TERRAFORM_VERSION is not installed."
-                    exit 1
+                # Check if the desired version of Terraform is installed
+                if ! [ -x "$TERRAFORM_BIN" ] || ! $TERRAFORM_BIN version | grep $TERRAFORM_VERSION; then
+                    echo "Installing Terraform version $TERRAFORM_VERSION..."
+
+                    # Update the system and install necessary dependencies
+                    sudo dnf update -y
+                    sudo dnf install -y unzip curl
+
+                    # Download and install Terraform
+                    curl -fsSL https://releases.hashicorp.com/terraform/$TERRAFORM_VERSION/terraform_${TERRAFORM_VERSION}_linux_amd64.zip -o terraform.zip
+                    unzip -o terraform.zip
+                    sudo mv terraform $TERRAFORM_BIN
+                    rm -f terraform.zip
+
+                    echo "Terraform $TERRAFORM_VERSION installed successfully."
+                else
+                    echo "Terraform $TERRAFORM_VERSION is already installed."
                 fi
                 '''
             }
