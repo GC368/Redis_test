@@ -1,29 +1,35 @@
 pipeline {
-    agent {
-        docker {
-            image 'hashicorp/terraform:1.6.0'
-        }
-    }
+    agent any
+    
     stages {
         stage('Terraform Init') {
             steps {
-                sh 'terraform init'
+                sh 'terraform init'  // Initialize Terraform
             }
         }
         stage('Terraform Plan') {
             steps {
-                sh 'terraform plan -out=tfplan'
+                withCredentials([aws(accessKeyVariable: 'AWS_ACCESS_KEY_ID', credentialsId: 'aws-test-key', secretKeyVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+                    sh '''
+                    terraform plan \
+                      -var "aws_access_key=${AWS_ACCESS_KEY_ID}" \
+                      -var "aws_secret_key=${AWS_SECRET_ACCESS_KEY}" \
+                      -out=tfplan
+                    '''
+                }
             }
         }
         stage('Terraform Apply') {
             steps {
-                sh 'terraform apply -auto-approve tfplan'
+                input message: 'Approve the Terraform changes?', ok: 'Apply Changes'
+                sh 'terraform apply tfplan'  // Apply the execution plan
             }
         }
     }
     post {
         always {
-            cleanWs()
+            cleanWs()  // Clean workspace after the build
         }
     }
 }
+
