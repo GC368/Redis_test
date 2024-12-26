@@ -3,6 +3,7 @@ pipeline {
 
     environment {
         TERRAFORM_VERSION = '1.6.0' // Specify the desired Terraform version
+        AWS_CREDENTIALS = credentials('Redis-key-pair')
         TERRAFORM_BIN = '/usr/local/bin/terraform'
     }
 
