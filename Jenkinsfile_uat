@@ -1,76 +1,29 @@
 pipeline {
-    agent any
-
-    environment {
-        TERRAFORM_VERSION = '1.6.0' // Specify the desired Terraform version
-        AWS_CREDENTIALS = credentials('Redis-key-pair')
-        TERRAFORM_BIN = '/usr/local/bin/terraform'
+    agent {
+        docker {
+            image 'hashicorp/terraform:1.6.0'
+        }
     }
-
     stages {
-        stage('Checkout Code') {
-            steps {
-                // Pull the code from your version control system
-                checkout scm
-            }
-        }
-
-        stage('Install Terraform') {
-            steps {
-                // Install Terraform on Amazon Linux 2023
-                sh '''
-                # Check if the desired version of Terraform is installed
-                if ! [ -x "$TERRAFORM_BIN" ] || ! $TERRAFORM_BIN version | grep $TERRAFORM_VERSION; then
-                    echo "Installing Terraform version $TERRAFORM_VERSION..."
-
-                    # Update the system and install necessary dependencies
-                    sudo dnf update -y
-                    sudo dnf install -y unzip curl
-
-                    # Download and install Terraform
-                    curl -fsSL https://releases.hashicorp.com/terraform/$TERRAFORM_VERSION/terraform_${TERRAFORM_VERSION}_linux_amd64.zip -o terraform.zip
-                    unzip -o terraform.zip
-                    sudo mv terraform $TERRAFORM_BIN
-                    rm -f terraform.zip
-
-                    echo "Terraform $TERRAFORM_VERSION installed successfully."
-                else
-                    echo "Terraform $TERRAFORM_VERSION is already installed."
-                fi
-                '''
-            }
-        }
-
         stage('Terraform Init') {
             steps {
-                // Initialize Terraform
                 sh 'terraform init'
             }
         }
-
         stage('Terraform Plan') {
             steps {
-                // Generate and show the execution plan
                 sh 'terraform plan -out=tfplan'
             }
         }
-
         stage('Terraform Apply') {
             steps {
-                // Apply the changes (requires approval)
                 sh 'terraform apply -auto-approve tfplan'
             }
         }
     }
-
     post {
         always {
-            // Clean up workspace or perform any post-run tasks
             cleanWs()
-        }
-        failure {
-            // Notify in case of failure
-            echo 'Pipeline failed. Please check the logs.'
         }
     }
 }
