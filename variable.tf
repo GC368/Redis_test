@@ -63,6 +63,16 @@ variable "key_pair_name" {
   default     = "jr-uat-2024"
 }
 
+variable "aws_access_key" {
+    description = "AWS Access Key"
+    type        = string
+}
+
+variable "aws_secret_key" {
+    description = "AWS Secret Key"
+    type        = string
+}
+
 
 
 
