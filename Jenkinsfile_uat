@@ -3,6 +3,10 @@ pipeline {
     tools {
         terraform 'Terraform'  // Matches the name in the Global Tool Configuration
     }
+    environment {
+        AWS_ACCESS_KEY_ID = credentials('aws-test-key')
+        AWS_SECRET_ACCESS_KEY = credentials('aws-test-key')
+    }
     stages {
         stage('Terraform Init') {
             steps {
