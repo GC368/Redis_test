@@ -26,7 +26,7 @@ resource "aws_instance" "redis_server" {
   ami                    = var.ami
   instance_type          = var.instance_type
   key_name               = var.key_pair_name  
-  vpc_security_group_ids = [aws_security_group.redis_sg.id]
+  vpc_security_group_ids = [aws_security_group.redis_security_group.id]
   subnet_id              = var.subnet_id
   tags = merge(
     var.tags,
