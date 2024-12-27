@@ -36,7 +36,7 @@ resource "aws_instance" "redis_server" {
 
 
 # Create Security Group
-resource "aws_security_group" "redis_sg" {
+resource "aws_security_group" "redis_security_group" {
   name        = "redis_sg"
   description = "Allow Redis and SSH access"
   vpc_id      = var.vpc_id
