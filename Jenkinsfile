@@ -3,85 +3,88 @@
 **************************************************************************************************/
 pipeline {
     agent any
-
+    
     environment {
-        WORKING_DIR = "Default"
-    //    AWS_CREDENTIALS = credentials('aws-test-key')
-        ENV = "uat"
-    }
-
-    parameters {
-        booleanParam(name: 'destroy', defaultValue: false, description: 'Destroy Terraform build?')
+        SSH_CREDENTIALS = 'Redis_test_id' 
     }
 
     options {
-        // Keep maximum 10 archived artifacts
         buildDiscarder(logRotator(numToKeepStr: '10', artifactNumToKeepStr: '10'))
-        // No simultaneous builds
         disableConcurrentBuilds()
-        durabilityHint('MAX_SURVIVABILITY') // PERFORMANCE_OPTIMIZED or SURVIVABLE_NONATOMIC
+        durabilityHint('MAX_SURVIVABILITY')
+        timeout(time: 30, unit: 'MINUTES') // Prevent long-running jobs
     }
 
     stages {
-        stage('Terraform Init & Plan') {
+
+        stage('Connect to EC2') {
             steps {
-                dir(WORKING_DIR) {
-                    // withVault(configuration: [timeout: 60, vaultCredentialId: 'Vault Credential', vaultUrl: 'https://vault.jiangren.com.au'], vaultSecrets: [[path: 'secret_aws/aws_uat', secretValues: [[vaultKey: 'AWS_ACCESS_KEY_ID'], [vaultKey: 'AWS_SECRET_ACCESS_KEY']]]]) {    
-                    //withCredentials([sshUserPrivateKey(credentialsId: SSH_CREDENTIALS, keyFileVariable: 'SSH_KEY')]) {                    
-                        sh '''
-                        terraform init
-                        terraform plan -out=tfplan
-                        '''
-                    //}
+                echo 'Connecting to EC2 instance...'
+                withCredentials([sshUserPrivateKey(credentialsId: SSH_CREDENTIALS, keyFileVariable: 'SSH_KEY')]) {
+                    sh """
+                        ssh -o StrictHostKeyChecking=no -i \$SSH_KEY ec2-user@3.106.140.67 'echo "Connected successfully"'
+                    """
                 }
             }
         }
 
-        stage('Terraform Apply') {
-            when {
-                not {
-                    equals expected: true, actual: params.destroy
-                }
-            }
+        stage('Prepare Docker') {
             steps {
-                dir(WORKING_DIR) {
-                    //withVault(configuration: [timeout: 60, vaultCredentialId: 'Vault Credential', vaultUrl: 'https://vault.jiangren.com.au'], vaultSecrets: [[path: 'secret_aws/aws_uat', secretValues: [[vaultKey: 'AWS_ACCESS_KEY_ID'], [vaultKey: 'AWS_SECRET_ACCESS_KEY']]]]) {                        
-                        // Ask for user approval before applying
-                        // script {
-                        //     def userInput = input(
-                        //         id: 'UserApproval',
-                        //         message: 'Do you want to proceed with the Terraform apply?',
-                        //         parameters: [[$class: 'BooleanParameterDefinition', name: 'Proceed', defaultValue: true]]
-                        //     )
+                echo 'Installing Docker on EC2 instance...'
+                withCredentials([sshUserPrivateKey(credentialsId: SSH_CREDENTIALS, keyFileVariable: 'SSH_KEY')]) {
+                    sh """
+                        ssh -o StrictHostKeyChecking=no -i \$SSH_KEY ec2-user@3.106.140.67 "
+                            # Update the system
+                            sudo dnf update -y
 
-                            // Proceed with terraform apply if approved
-                            if (userInput) {
-                                sh '''
-                                cd $ENV
-                                terraform apply -auto-approve tfplan
-                                '''
-                            } else {
-                                echo 'Terraform apply was not approved. Exiting.'
-                                error('User did not approve the apply step.')
-                            }
-                        }
-                    }
+                            # Install Docker
+                            sudo dnf install -y docker
+
+                            # Start Docker service and enable on boot
+                            sudo systemctl start docker
+                            sudo systemctl enable docker
+
+                            # Add ec2-user to the docker group
+                            sudo usermod -aG docker ec2-user
+                        "
+                    """
                 }
             }
         }
+
+        stage('Run Redis Docker') {
+            steps {
+                echo 'Starting Redis in Docker container...'
+                withCredentials([sshUserPrivateKey(credentialsId: SSH_CREDENTIALS, keyFileVariable: 'SSH_KEY')]) {
+                    sh """
+                        ssh -o StrictHostKeyChecking=no -i \$SSH_KEY ec2-user@3.106.140.67 "
+                            # Pull Redis Docker image
+                            docker pull redis/redis-stack-server:latest
+
+                            # Run Redis in Docker container
+                            docker run -d --name redis-stack-server -p 6379:6379 redis/redis-stack-server:latest
+
+                            # Test Redis is running
+                            docker exec redis-stack-server redis-cli ping
+                        "
+                    """
+                }
+            }
+        }
+    }
 
     post {
         always {
-            // clean workspace
+            echo 'Cleaning up Jenkins workspace...'
             cleanWs()
         }
+
         success {
-            bitbucketStatusNotify(buildState: 'SUCCESSFUL')
-            echo 'Success.'
+            echo 'Pipeline executed successfully.'
         }
+
         failure {
-            bitbucketStatusNotify(buildState: 'FAILED')
-            echo 'Failure.'
+            echo 'Pipeline failed. Please check the logs for details.'
         }
-    }
+    } 
 }
